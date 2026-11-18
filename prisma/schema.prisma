@@ -1,0 +1,332 @@
+// Prisma schema for the English learning app.
+// Docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─────────────────────────────────────────────────────────────
+// Better Auth core tables (user / session / account / verification)
+// ─────────────────────────────────────────────────────────────
+
+model User {
+  id            String    @id
+  name          String
+  email         String    @unique
+  emailVerified Boolean   @default(false)
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  sessions      Session[]
+  accounts      Account[]
+
+  cardProgress   CardProgress[]
+  reviewLogs     ReviewLog[]
+  quizAttempts   QuizAttempt[]
+  practiceLogs   PracticeLog[]
+  dailyActivity  DailyActivity[]
+  decks          Deck[]
+  learnerProfile LearnerProfile?
+  wordNotes      WordNote[]
+
+  @@map("user")
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+  @@map("verification")
+}
+
+// ─────────────────────────────────────────────────────────────
+// Learning content
+// ─────────────────────────────────────────────────────────────
+
+enum Category {
+  TOEIC
+  IELTS
+  GENERAL
+}
+
+model Deck {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  title       String
+  description String
+  category    Category
+  level       String // e.g. "B1", "TOEIC 600+", "IELTS 6.5"
+  topic       String
+  /// Lower bound of the TOEIC score band (550, 650, 750, 850); null for non-TOEIC decks.
+  toeicBand   Int?
+  isOfficial  Boolean  @default(true)
+  ownerId     String? // null for seeded decks; reserved for user-created decks
+  owner       User?    @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  words       Word[]
+
+  @@index([category])
+  @@index([toeicBand])
+}
+
+model Word {
+  id           String         @id @default(cuid())
+  deckId       String
+  deck         Deck           @relation(fields: [deckId], references: [id], onDelete: Cascade)
+  term         String
+  phonetic     String // IPA
+  partOfSpeech String
+  definitionEn String
+  meaningVi    String
+  exampleEn    String
+  exampleVi    String
+  position     Int            @default(0)
+  // Context and memory aids (empty by default, so older words keep working).
+  synonyms     String[]
+  antonyms     String[]
+  collocations String[]
+  wordFamily   String[] // e.g. "decide (v)", "decision (n)", "decisive (adj)"
+  moreExamples Json? // [{ en, vi }]
+  mnemonicVi   String?
+  progress     CardProgress[]
+  reviewLogs   ReviewLog[]
+  notes        WordNote[]
+
+  @@unique([deckId, term])
+  @@index([deckId])
+}
+
+enum QuizSkill {
+  VOCAB
+  GRAMMAR
+  LISTENING
+  READING
+}
+
+enum QuestionType {
+  MULTIPLE_CHOICE
+  FILL_BLANK
+}
+
+model Quiz {
+  id          String        @id @default(cuid())
+  slug        String        @unique
+  title       String
+  description String
+  category    Category
+  skill       QuizSkill
+  level       String
+  /// Lower bound of the TOEIC score band (550, 650, 750, 850); null for non-TOEIC quizzes.
+  toeicBand   Int?
+  /// TOEIC part(s) covered, e.g. "5", "6–7", "2–4".
+  toeicPart   String?
+  createdAt   DateTime      @default(now())
+  questions   Question[]
+  passages    Passage[]
+  attempts    QuizAttempt[]
+
+  @@index([toeicBand])
+}
+
+/// A reading text (TOEIC Part 6/7) or listening script (Part 3/4) shared by several questions.
+model Passage {
+  id        String     @id @default(cuid())
+  quizId    String
+  quiz      Quiz       @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  order     Int
+  kind      String // e.g. "Email", "Notice", "Conversation", "Talk"
+  title     String?
+  content   String? // reading text; Part 6 blanks are written as [1], [2]…
+  audioText String? // listening script, spoken via text-to-speech
+  questions Question[]
+
+  @@unique([quizId, order])
+}
+
+model Question {
+  id            String          @id @default(cuid())
+  quizId        String
+  quiz          Quiz            @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  passageId     String?
+  passage       Passage?        @relation(fields: [passageId], references: [id], onDelete: SetNull)
+  order         Int
+  type          QuestionType
+  prompt        String
+  audioText     String? // spoken via text-to-speech for listening questions
+  options       String[]
+  correctAnswer String
+  explanationEn String
+  explanationVi String
+  answers       AttemptAnswer[]
+
+  @@unique([quizId, order])
+}
+
+model Sentence {
+  id            String        @id @default(cuid())
+  text          String        @unique
+  translationVi String
+  category      Category
+  level         String
+  practiceLogs  PracticeLog[]
+
+  @@index([category])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Per-user progress
+// ─────────────────────────────────────────────────────────────
+
+model CardProgress {
+  id             String    @id @default(cuid())
+  userId         String
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  wordId         String
+  word           Word      @relation(fields: [wordId], references: [id], onDelete: Cascade)
+  easeFactor     Float     @default(2.5)
+  intervalDays   Int       @default(0)
+  repetitions    Int       @default(0)
+  lapses         Int       @default(0)
+  dueAt          DateTime  @default(now())
+  lastReviewedAt DateTime?
+  createdAt      DateTime  @default(now())
+
+  @@unique([userId, wordId])
+  @@index([userId, dueAt])
+}
+
+model ReviewLog {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  wordId     String
+  word       Word     @relation(fields: [wordId], references: [id], onDelete: Cascade)
+  rating     Int // 1 = again, 2 = hard, 3 = good, 4 = easy
+  reviewedAt DateTime @default(now())
+
+  @@index([userId, reviewedAt])
+}
+
+model QuizAttempt {
+  id          String          @id @default(cuid())
+  userId      String
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  quizId      String
+  quiz        Quiz            @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  score       Int
+  total       Int
+  completedAt DateTime        @default(now())
+  answers     AttemptAnswer[]
+
+  @@index([userId, completedAt])
+}
+
+model AttemptAnswer {
+  id         String      @id @default(cuid())
+  attemptId  String
+  attempt    QuizAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  questionId String
+  question   Question    @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  answer     String
+  isCorrect  Boolean
+
+  @@unique([attemptId, questionId])
+}
+
+enum PracticeMode {
+  DICTATION
+  SPEAKING
+}
+
+model PracticeLog {
+  id         String       @id @default(cuid())
+  userId     String
+  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sentenceId String
+  sentence   Sentence     @relation(fields: [sentenceId], references: [id], onDelete: Cascade)
+  mode       PracticeMode
+  score      Int // 0–100
+  createdAt  DateTime     @default(now())
+
+  @@index([userId, createdAt])
+}
+
+/// A learner's own memory trick or note for a word.
+model WordNote {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  wordId    String
+  word      Word     @relation(fields: [wordId], references: [id], onDelete: Cascade)
+  note      String
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, wordId])
+}
+
+model LearnerProfile {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Target TOEIC score: 650, 750, 850 or 990.
+  toeicTarget Int?
+  updatedAt   DateTime @updatedAt
+}
+
+model DailyActivity {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date      DateTime @db.Date
+  reviews   Int      @default(0)
+  quizzes   Int      @default(0)
+  practices Int      @default(0)
+
+  @@unique([userId, date])
+}
