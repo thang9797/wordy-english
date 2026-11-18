@@ -18,7 +18,7 @@ Các lệnh viết cho **Git Bash** (hoặc terminal trong VS Code chọn Git Ba
                                                 │  https://wordy-english.vercel.app      │
                                                 │        │                               │
                                                 │        ▼                               │
-                                                │  Neon Postgres (neon-violet-field)     │
+                                                │  Neon Postgres (wordy-sin, Singapore)  │
                                                 └───────────────────────────────────────┘
 ```
 
@@ -270,7 +270,7 @@ rm .env.neon                                                # xoá file chứa m
 
 - `.env.neon` bị `.gitignore` chặn (`.env*`), nên không bị commit nhầm. Vẫn nên xoá sau khi dùng.
 - `--env-file` được ưu tiên hơn file `.env`, nên lệnh này ghi vào Neon chứ không phải database trên máy.
-- Seed lên Neon mất vài phút vì database ở Mỹ.
+- Seed lên Neon mất khoảng 1 phút.
 - Cần đã chạy `vercel login` và thư mục đã liên kết project (`vercel link`).
 
 ### 7.4. Biến môi trường
@@ -304,7 +304,7 @@ Nếu bản mới có lỗi: vào trang project trên Vercel → **Deployments**
 | Seed báo `Extras for unknown terms: ...` | Khoá trong `extras-*.ts` không khớp từ nào. Sửa cho đúng chính tả. |
 | Build trên Vercel lỗi ở bước `[migrate]` | Migration không áp dụng được lên Neon. Xem log: `vercel inspect <url-deploy> --logs`. Web cũ vẫn chạy bình thường. |
 | Đăng nhập trên web báo lỗi origin | `BETTER_AUTH_URL` trên Vercel không khớp domain. Sửa biến rồi deploy lại. |
-| Trang web hơi chậm | Function chạy ở Singapore (`sin1` trong `vercel.json`) còn Neon ở Mỹ (`us-east-1`), mỗi truy vấn thêm khoảng 200ms. Cách sửa: tạo lại Neon ở Singapore, hoặc đổi region trong `vercel.json` sang `iad1`. |
+| Trang web hơi chậm | Function (`sin1` trong `vercel.json`) và Neon (`wordy-sin`, `ap-southeast-1`) đều ở Singapore. Nếu đổi một trong hai sang vùng khác, mỗi truy vấn có thể chậm thêm vài trăm ms; hãy giữ chúng cùng vùng. Kiểm tra vùng function qua header `x-vercel-id` (ví dụ `hkg1::sin1::...`, phần giữa là vùng chạy function). |
 | Từ mới không hiện trên web | Chưa seed lên Neon. Làm theo mục 7.3. |
 
 ---
