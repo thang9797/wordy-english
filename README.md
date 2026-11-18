@@ -4,7 +4,7 @@ A web app for Vietnamese learners preparing for TOEIC and IELTS. Built with **Ne
 
 ## Features
 
-- **Vocabulary with spaced repetition (SM-2)**: 53 decks and about 1,050 words: **B2** (182 words), **C1** (121 words) and **C2** (84 words) general English by topic, TOEIC by score band (550–990), IELTS topics and everyday English. Each word has IPA, an English definition, a Vietnamese meaning and bilingual examples. B2/C1/C2 words also have synonyms, opposites, collocations, word family, an extra example and sometimes a memory trick.
+- **Vocabulary with spaced repetition (SM-2)**: 57 decks and about 1,110 words: **B2** (182 words), **C1** (121 words) and **C2** (140 words) general English by topic, TOEIC by score band (550–990), IELTS topics and everyday English. Each word has IPA, an English definition, a Vietnamese meaning and bilingual examples. B2/C1/C2 words also have synonyms, opposites, collocations, word family, an extra example and sometimes a memory trick.
 - **Different ways to review a word**: a new word is shown as a flip card; after that it comes back as *choose the meaning*, then *fill the blank in a sentence*, then *listen and spell it*. A wrong answer is always "Again"; a correct one lets you choose Hard / Good / Easy. The mode comes from how well the card is known (`src/lib/review-modes.ts`).
 - **My notes**: write your own example or memory trick for any word (on the card and in the deck list).
 - **Quizzes**: TOEIC Part 5–style grammar and vocabulary, IELTS collocations and Task 1 trend language, a grammar set, and a listening set. Answers are graded on the server and every result has explanations in English and Vietnamese.
