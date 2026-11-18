@@ -4,7 +4,7 @@ A web app for Vietnamese learners preparing for TOEIC and IELTS. Built with **Ne
 
 ## Features
 
-- **Vocabulary with spaced repetition (SM-2)**: 41 decks and about 890 words: **B2** (140 words) and **C1** (79 words) general English, TOEIC by score band (550–990), IELTS topics and everyday English. Each word has IPA, an English definition, a Vietnamese meaning and bilingual examples. B2/C1 words also have synonyms, opposites, collocations, word family, an extra example and sometimes a memory trick.
+- **Vocabulary with spaced repetition (SM-2)**: 53 decks and about 1,050 words: **B2** (182 words), **C1** (121 words) and **C2** (84 words) general English by topic, TOEIC by score band (550–990), IELTS topics and everyday English. Each word has IPA, an English definition, a Vietnamese meaning and bilingual examples. B2/C1/C2 words also have synonyms, opposites, collocations, word family, an extra example and sometimes a memory trick.
 - **Different ways to review a word**: a new word is shown as a flip card; after that it comes back as *choose the meaning*, then *fill the blank in a sentence*, then *listen and spell it*. A wrong answer is always "Again"; a correct one lets you choose Hard / Good / Easy. The mode comes from how well the card is known (`src/lib/review-modes.ts`).
 - **My notes**: write your own example or memory trick for any word (on the card and in the deck list).
 - **Quizzes**: TOEIC Part 5–style grammar and vocabulary, IELTS collocations and Task 1 trend language, a grammar set, and a listening set. Answers are graded on the server and every result has explanations in English and Vietnamese.
@@ -77,36 +77,17 @@ Add words to `prisma/data/*-decks.ts` (use `wx()` instead of `w()` to attach syn
 - **Time zone**: streak days roll over at midnight in `APP_TIME_ZONE`, which defaults to `Asia/Ho_Chi_Minh`.
 - **Speech** runs entirely in the browser through the Web Speech API: it's free and needs no API keys. Voice quality depends on the browser and operating system.
 
-## Deploying for free (Vercel + Neon)
+## Deployment
 
-1. **Database (Neon):** create a free project at neon.tech. Pick the region closest to your users (Singapore for Vietnam). Copy the connection string (it ends with `?sslmode=require`).
-2. **Create the tables and load the words** from your own machine, pointing at Neon (use PowerShell or Git Bash):
-   ```bash
-   DATABASE_URL="<your Neon connection string>" npm run db:deploy
-   DATABASE_URL="<your Neon connection string>" npm run db:seed
-   ```
-3. **Code on GitHub:** create an empty repository and push this project. `.env` is git-ignored, so no secrets are uploaded.
-4. **Vercel:** import the GitHub repository at vercel.com/new and add these environment variables before the first deploy:
+Live site: https://wordy-english.vercel.app (Vercel, with a Neon Postgres database from the Vercel Marketplace).
 
-   | Name | Value |
-   |---|---|
-   | `DATABASE_URL` | the Neon connection string (needed at build time too) |
-   | `BETTER_AUTH_SECRET` | a new random string: `node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"` |
-   | `BETTER_AUTH_URL` | `https://<your-project>.vercel.app` (after the first deploy shows the real address, set it and redeploy) |
+- **Code:** pushing to `main` deploys to production automatically; other branches and pull requests get a preview URL.
+- **Schema changes:** production builds run `prisma migrate deploy` (see `scripts/migrate-on-deploy.mjs`). Preview builds skip it because they share the production database.
+- **Content changes:** deploys do not run the seed. After adding words, seed Neon from your machine:
+  ```bash
+  vercel env pull .env.neon --environment=production --yes
+  npx tsx --env-file=.env.neon prisma/seed.ts
+  rm .env.neon
+  ```
 
-   Set the function region to Singapore (`sin1`) under Settings -> Functions so it sits next to the database.
-5. Open the `.vercel.app` address, sign up, and study a deck.
-
-When you add words later, re-run step 2's `db:seed` command. It is safe to repeat and keeps learners' progress.
-
-### Updating the live site
-
-Deployed from this folder with the Vercel CLI (no GitHub needed):
-
-```bash
-npx vercel deploy --prod          # publish the current code
-DATABASE_URL="<Neon direct string>" npm run db:deploy   # only after a schema change
-DATABASE_URL="<Neon direct string>" npm run db:seed     # only after changing words
-```
-
-The Neon strings are in your Neon dashboard (Connect). Live site: https://wordy-english.vercel.app
+The full step-by-step guide (in Vietnamese), including troubleshooting, is in [docs/HUONG-DAN.md](docs/HUONG-DAN.md).
